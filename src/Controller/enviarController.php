@@ -262,14 +262,17 @@ public function sendEmail4()
         return $response;
     } else {
         // Mensaje de error
-        $response = new Response('ERROR en api de gmail  ');
-        return $response;
        
-   // $auth_url = $client->createAuthUrl();
+       
+    $auth_url = $client->createAuthUrl();
   
     // Redirige al usuario a la URL de autenticación
-    //header('Location: ' . $auth_url);
-    //exit();
+    header('Location: ' . $auth_url);
+    $response = new Response('ERROR en api de gmail  ');
+    exit();
+    return $response;
+
+
     }
 }
 
