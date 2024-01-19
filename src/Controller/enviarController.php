@@ -7,12 +7,12 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Response;
 use App\Service\GmailService;
-
+use Google\Service\Gmail; //
 use Google_Client;
 
 // Importa las clases necesarias
 
-use Google_Service;
+use Google_Service;  //x
 
 //include_once 'ext/standard/header.php';
 
@@ -239,7 +239,7 @@ public function sendEmail4()
     $client->setClientId($client_id);
     $client->setClientSecret($client_secret);
     $client->setRedirectUri($redirect_uri);
-    $client->addScope('email');
+    $client->addScope([Gmail::MAIL_GOOGLE_COM]);
 
     // Genera la URL de autenticación
     $auth_url = $client->createAuthUrl();
@@ -255,7 +255,60 @@ public function sendEmail4()
         $access_token = $client->fetchAccessTokenWithAuthCode($code);
 
         // Usa el token de acceso para realizar una solicitud a la API
-        $service = new Google_Service($client);
+        $service = new Gmail($client);
+
+
+         // Enviar correo electrónico de prueba
+    $to = 'destinatario@example.com';
+    $subject = 'Asunto del correo electrónico';
+    $body = 'Este es el cuerpo del correo electrónico';
+
+    //$service->users->messages->send($to, $subject, $body);
+    
+   // $service->users_messages->send($to, $subject, $body);
+
+    $result = $service->users_messages->listUsersMessages('me', ['maxResults'=> 100]);
+    
+    
+    print("##########   CONECTADO API GMAIL   ##########" . "<br><br>");
+    
+   
+
+    foreach ($result->getMessages() as $msg) {
+        $messageId = $msg->getId();
+        $message = $service->users_messages->get('me', $messageId);
+        $headers = $message->getPayload()->getHeaders();
+        $subject = "";
+        $date = "";
+        $snippet = $message->getSnippet();
+    
+        foreach ($headers as $header) {
+            if ($header->getName() == 'Subject') {
+                $subject = $header->getValue();
+            }
+            if ($header->getName() == 'Date') {
+                $date = $header->getValue();
+            }
+        }
+    
+        print("ID del mensaje: " . $messageId . "<br>");
+        print("Asunto: " . $subject . "<br>");
+        print("Fecha: " . $date . "<br>");
+        print("Extracto: " . $snippet . "<br><br>");
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
         // Mensaje de éxito
         $response = new Response('Conectado a la api de gmail  ');
@@ -275,12 +328,6 @@ public function sendEmail4()
 
     }
 }
-
-
-
-
-
-
 
 
 
