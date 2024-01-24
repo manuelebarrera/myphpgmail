@@ -7,7 +7,8 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Response;
 use App\Service\GmailService;
-use Google\Service\Gmail; //
+use Google\Service\Gmail;
+//use Google\Service\Gmail\Message;
 use Google_Client;
 
 
@@ -168,62 +169,11 @@ if ($client->isAccessTokenExpired()) {
 
 
     /**
-     * @Route("/email3", name="send_email3")
+     * @Route("/autenticar", name="autenticar")
      */
-    public function sendEmail3()
+    public function autenticar()
     {
         
-
-
-// Configura las credenciales
-$client_id = "653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com";
-$client_secret = "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";
-$redirect_uri = 'https://127.0.0.1:8001';
-
-//$redirect_uri = 'http://localhost:8081/oauth2callback';
-
-
-// Crea el cliente de Google
-$client = new Google_Client();
-$client->setClientId($client_id);
-$client->setClientSecret($client_secret);
-$client->setRedirectUri($redirect_uri);
-//$client->addScope(Google_Service::SCOPES_GMAIL_READONLY);
-//$client->addScope(['https://www.googleapis.com/auth/gmail.readonly']);
-$client->addScope('email');
-
-
-// Genera la URL de autenticación
-$auth_url = $client->createAuthUrl();
-
-
-// Redirige al usuario a la URL de autenticación
-//header('Location: ' . filter_var($auth_url, FILTER_SANITIZE_URL));
-header('Location: ' . $auth_url);
-
-exit();
-//redirect($auth_url);
-
-
-// Captura la URL de devolución
-//if (isset($_GET['code'])) {
-if (isset($_GET['code']) && $_SERVER['REQUEST_URI'] == $redirect_uri) {
-    print("######################codigo ok");
-    $redirect_uri2 = $_GET['code'];
-    print("######################codigo ok");
-    // Intercambia el código de autorización por un token de acceso
-    $access_token = $client->fetchAccessTokenWithAuthCode($redirect_uri2);
-    print("######################token ok");
-    // Usa el token de acceso para realizar una solicitud a la API
-    $service = new Google_Service($client);
-    $response = new Response('email ok  '. $auth_url);
-        return $response; 
-   
-}else{
-    $response = new Response('email NOOO ok  ' .  $auth_url );
-    return $response; 
-
-}
       
        
     }
@@ -248,19 +198,23 @@ if (isset($_GET['code']) && $_SERVER['REQUEST_URI'] == $redirect_uri) {
     public function sendEmail4()
     {
         $credentialspath = (__DIR__ . '/token.json');
+        $credentials = (__DIR__ . '/credentials.json');
         // Configura las credenciales
-        $client_id = "653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com";
-        $client_secret = "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";
-        $redirect_uri = 'https://127.0.0.1:8001/email4';
+        // $client_id = "653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com";
+        // $client_secret = "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";
+        // $redirect_uri = 'https://127.0.0.1:8001/email4';
 
         // Crea el cliente de Google
         $client = new Google_Client();
-        $client->setClientId($client_id);
-        $client->setClientSecret($client_secret);
-        $client->setRedirectUri($redirect_uri);
-        $client->addScope([Gmail::MAIL_GOOGLE_COM]);
 
+
+        //$client->setClientId($client_id);
+        //$client->setClientSecret($client_secret);
+        //$client->setRedirectUri($redirect_uri);
+        $client->addScope([Gmail::MAIL_GOOGLE_COM]);
+        $client->setAuthConfig($credentials);
         $client->setAccessType('offline');
+
 
 
 
@@ -306,10 +260,50 @@ if (isset($_GET['code']) && $_SERVER['REQUEST_URI'] == $redirect_uri) {
                 $service = new Gmail($client);
 
 
+
                 // Enviar correo electrónico de prueba
-                $to = 'destinatario@example.com';
-                $subject = 'Asunto del correo electrónico';
-                $body = 'Este es el cuerpo del correo electrónico';
+
+
+
+                // Crear un mensaje
+                $message = new Gmail\Message();
+
+                // Definir los encabezados del correo electrónico
+                $headers = "From: pruebamanuelebarrera@gmail.com\r\n";
+                $headers .= "To: manuelebarrera@gmail.com\r\n";
+                $headers .= "Subject: Asunto del correo electrónico php\r\n";
+
+                // Definir el cuerpo del correo electrónico
+                $body = 'Este es el cuerpo del correo electrónico [Gmail::GMAIL_SEND, Gmail::GMAIL_READONLY, Gmail::MAIL_GOOGLE_COM]';
+
+                // Combinar los encabezados y el cuerpo del correo electrónico
+                $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
+                $message->setRaw($rawMessage);
+
+                // Enviar el correo electrónico
+                $service->users_messages->send('me', $message);
+
+
+
+
+
+
+               
+
+
+
+
+           
+
+
+
+
+
+
+
+
+
+
 
                 //$service->users->messages->send($to, $subject, $body);
 
@@ -354,7 +348,7 @@ if (isset($_GET['code']) && $_SERVER['REQUEST_URI'] == $redirect_uri) {
 
 
                 // Mensaje de éxito
-                $response = new Response('Conectado a la api de gmail  ');
+                $response = new Response('caso1 - Conectado a la api de gmail  ');
                 return $response;
             } else {
                 // Mensaje de error
@@ -369,12 +363,14 @@ if (isset($_GET['code']) && $_SERVER['REQUEST_URI'] == $redirect_uri) {
                 return $response;
             }
         }
+        
         $client->setAccessToken($access_token);
         if ($client->isAccessTokenExpired()) {
             $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
             file_put_contents($credentialspath, json_encode($client->getAccessToken()));
         }
         $service = new Gmail($client);
+       
         $result = $service->users_messages->listUsersMessages('me', ['maxResults' => 100]);
         foreach ($result->getMessages() as $msg) {
             $messageId = $msg->getId();
@@ -403,7 +399,7 @@ if (isset($_GET['code']) && $_SERVER['REQUEST_URI'] == $redirect_uri) {
 
 
 
-        $response = new Response('Conectado a la api de gmail final ');
-            return $response;
+        $response = new Response('caso2 - Conectado a la api de gmail final ');
+        return $response;
     }
 }
