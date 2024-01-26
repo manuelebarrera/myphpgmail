@@ -10,161 +10,169 @@ use App\Service\GmailService;
 use Google\Service\Gmail;
 //use Google\Service\Gmail\Message;
 use Google_Client;
-
+use Symfony\Component\HttpFoundation\Request;
 
 //use Google\Auth\Credentials\
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-// Importa las clases necesarias
-
 use Google_Service;  //x
 
-//include_once 'ext/standard/header.php';
 
 
 class enviarController extends AbstractController
 {
+
+
+
     /**
-     * @Route("/email", name="send_email")
+     * @Route("/send", name="send")
      */
-    public function sendEmail(MailerInterface $mailer, GmailService $gmailService)
+    public function sendEmail(Request $request)
     {
-         // Autenticarse con la API de Gmail
-         $gmailService->authenticate();
+        $to = $request->query->get('to');
+        if (!$to) {
+            $to = 'manuelebarrera@gmail.com';
+        }
 
-         // Realizar operaciones con la API de Gmail, enviar correos, etc.
-
-
-
-         $email = (new Email())
-            ->from('pruebamanuelebarrera@gmail.com')
-            ->to('manuelebarrera@gmail.com')
-            ->subject('Prueba de correo')
-            ->text('¡Hola! Este es un correo de prueba.');
-
-        $mailer->send($email);
-
-        //return $this->redirectToRoute('home');
-        $response = new Response('email enviado');
-        return $response; }
+        $token = (__DIR__ . '/token.json');
+        $credentials = (__DIR__ . '/credentials.json');
 
 
+        if (file_exists($token) && file_exists($credentials)) {
+            $client = new Google_Client();
+            $client->addScope([Gmail::MAIL_GOOGLE_COM]); //
+            $client->setAuthConfig($credentials); //
+            $client->setAccessType('offline'); //
 
 
-  /**
-     * @Route("/email2", name="send_email2")
-     */
-    public function sendEmail2()
-    {
-        $client = new Google_Client();
-$client->setApplicationName('myphpgmail');
-$client->setClientId('653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com'); // Reemplaza 'your-client-id' con tu ID de cliente
-$client->setClientSecret('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'); // Reemplaza 'your-client-secret' con tu secreto de cliente
-                            
-$client->setRedirectUri('https://127.0.0.1:8001/index.php'); // Reemplaza 'your-redirect-uri' con tu URI de redirección
-$client->addScope('email');
-$client->addScope('profile');
-//$client->setAccessType('offline');
-//$client->setPrompt('select_account consent');
+            $access_token = json_decode(file_get_contents($token), true);
 
+            $client->setAccessToken($access_token);
+            if ($client->isAccessTokenExpired()) {
+                $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+                file_put_contents($token, json_encode($client->getAccessToken()));
+            }
 
+            $service = new Gmail($client);
+            // Crear un mensaje
+            $message = new Gmail\Message();
 
-// Solicitar un token de acceso
-if ($client->isAccessTokenExpired()) {
-    if ($client->getRefreshToken()) {
-        $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
-    } else {
-        //define('STDIN', fopen('php://stdin', 'r'));
-        // Solicitar autorización del usuario
-        $authUrl = $client->createAuthUrl();
-        printf("Abre el siguiente enlace en tu navegador:\n%s\n", $authUrl);
-        print 'Ingresa el código de verificación: ';
-        //$authCode = trim(fgets(STDIN));
-        $authCode = trim(fgets(fopen('php://stdin', 'r')));
+            // Definir los encabezados del correo electrónico
+            $headers = "From: pruebamanuelebarrera@gmail.com\r\n";
+            $headers .= "To: " . $to . "\r\n";
+            $headers .= "Subject: Asunto del correo electrónico php\r\n";
 
-        header('Location: ' . $authUrl);
-        exit; 
+            // Definir el cuerpo del correo electrónico
+            $body = 'Este es el cuerpo del correo electrónico ';
 
+            // Combinar los encabezados y el cuerpo del correo electrónico
+            $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
+            $message->setRaw($rawMessage);
 
-        if (isset($_GET['code'])) {
-            // Captura el código de autenticación desde la URL
-            $authCode = $_GET['code'];
-        
-            // Intercambia el código de autenticación por un token de acceso
-            $accessToken = $client->fetchAccessTokenWithAuthCode($authCode);
-        
-            // Establece el token de acceso en el cliente
-            $client->setAccessToken($accessToken);
-        
-            // Ahora puedes realizar acciones con el cliente autenticado
-        
-            // Por ejemplo, obtén información del usuario autenticado
-            $userInfo = $client->verifyIdToken();
-            print_r($userInfo);
+            // Enviar el correo electrónico
+            $msg = $service->users_messages->send('me', $message);
+
+            $response = [
+                'Mensaje enviado' => 'Ok',
+                'headers' => $headers,
+                'mensaje' => $body,
+            ];
+
+            $json = json_encode($response);
+
+            $response = new Response($json, 400);
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
         } else {
-            // Si no se recibió el código, muestra un mensaje de error o realiza alguna acción adecuada
-            echo "Error: No se recibió el código de autenticación.";
-        }
+            $response = [
+                'mensaje' => 'Error en Autentificacion',
+            ];
 
+            $json = json_encode($response);
 
-
-
-
-
-        // Intercambiar código de autorización por un token de acceso
-        //$accessToken = $client->fetchAccessTokenWithAuthCode($authCode);
-        //$client->setAccessToken($accessToken);
-
-        // Verificar si hubo errores
-        if (array_key_exists('error', $accessToken)) {
-            $response = new Response('error '. $accessToken);
-        return $response;
-
-        //    throw new Exception(join(', ', $accessToken));
+            $response = new Response($json, 400);
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
         }
     }
-    // Guardar el token en un archivo para futuras ejecuciones
-    //file_put_contents($tokenPath, json_encode($client->getAccessToken()));
-
-
-    $service = new GmailService($client);
 
 
 
 
+    /**
+     * @Route("/list", name="list")
+     */
+    public function list()
+    {
+        $token = (__DIR__ . '/token.json');
+        $credentials = (__DIR__ . '/credentials.json');
+
+
+        if (file_exists($token) && file_exists($credentials)) {
+            $client = new Google_Client();
+            $client->addScope([Gmail::MAIL_GOOGLE_COM]); //
+            $client->setAuthConfig($credentials); //
+            $client->setAccessType('offline'); //
+
+
+            $access_token = json_decode(file_get_contents($token), true);
+
+            $client->setAccessToken($access_token);
+            if ($client->isAccessTokenExpired()) {
+                $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+                file_put_contents($token, json_encode($client->getAccessToken()));
+            }
 
 
 
 
+            $service = new Gmail($client);
+            $result = $service->users_messages->listUsersMessages('me', ['maxResults' => 100, 'labelIds' => 'INBOX']); //SENT  TRASH  INBOX
+
+            $correos = [];
+            foreach ($result->getMessages() as $msg) {
+                $messageId = $msg->getId();
+                $message = $service->users_messages->get('me', $messageId);
+                $headers = $message->getPayload()->getHeaders();
+                $subject = "";
+                $date = "";
+                $snippet = $message->getSnippet();
+
+                foreach ($headers as $header) {
+                    if ($header->getName() == 'Subject') {
+                        $subject = $header->getValue();
+                    }
+                    if ($header->getName() == 'Date') {
+                        $date = $header->getValue();
+                    }
+                }
+
+                $correos[] = [
+                    'id' => $messageId,
+                    'asunto' => $subject,
+                    'fecha' => $date,
+                    'extracto' => $snippet
+                ];
+            }
 
 
+            $response = new Response(json_encode($correos));
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
+        } else {
+            $response = [
+                'mensaje' => 'Error en Autentificacion',
+            ];
 
+            $json = json_encode($response);
 
-
-
-
-
-        $response = new Response('email enviado');
-        return $response; }
-
-
+            $response = new Response($json, 400);
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
+        }
     }
-
-
 
 
 
@@ -173,10 +181,116 @@ if ($client->isAccessTokenExpired()) {
      */
     public function autenticar()
     {
-        
-      
-       
+        $token = (__DIR__ . '/token.json');
+        $credentials = (__DIR__ . '/credentials.json');
+        if (!file_exists($credentials)) {
+            $response = [
+                'mensaje' => 'Falta archivo de credenciales',
+            ];
+
+            $json = json_encode($response);
+
+            $response = new Response($json, 400);
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
+        }
+
+
+        $client = new Google_Client();
+        //$client->setClientId($client_id);
+        //$client->setClientSecret($client_secret);
+        //$client->setRedirectUri($redirect_uri);
+        //$redirect_uri = 'https://127.0.0.1:8001/autenticar';
+        $client->addScope([Gmail::MAIL_GOOGLE_COM]); //
+        $client->setAuthConfig($credentials); //
+        $client->setAccessType('offline'); //
+        //$client->setRedirectUri($redirect_uri);$this->client
+
+        if (file_exists($token)) {
+            $access_token = json_decode(file_get_contents($token), true);
+        } else {
+            $auth_url = $client->createAuthUrl();
+            header('Location: ' . $auth_url);
+
+            if (isset($_GET['code'])) {
+                $code = $_GET['code'];
+                $access_token = $client->fetchAccessTokenWithAuthCode($code);
+                if (!file_exists(dirname($token))) {
+                    mkdir(dirname($token), 0700, true);
+                }
+                file_put_contents($token, json_encode($access_token));
+                $client->setAccessToken($access_token);
+                if ($client->isAccessTokenExpired()) {
+                    $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+                    file_put_contents($token, json_encode($client->getAccessToken()));
+                }
+                $response = [
+                    'mensaje' => 'Autenticado correctamente',
+                ];
+
+                $json = json_encode($response);
+
+                $response = new Response($json, 400);
+                $response->headers->set('Content-Type', 'application/json');
+                // header('Location: ' . $redirect_uri);
+                return $response;
+            } else {
+                $auth_url = $client->createAuthUrl();
+                header('Location: ' . $auth_url);
+                exit();
+
+                $response = [
+                    'mensaje' => 'Error en Autentificacion',
+                ];
+
+                $json = json_encode($response);
+
+                $response = new Response($json, 400);
+                $response->headers->set('Content-Type', 'application/json');
+                return $response;
+            }
+        }
+
+        $client->setAccessToken($access_token);
+        if ($client->isAccessTokenExpired()) {
+            $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+            file_put_contents($token, json_encode($client->getAccessToken()));
+        }
+
+        $response = [
+            'mensaje' => 'Autenticado correctamente',
+        ];
+
+        $json = json_encode($response);
+
+        $response = new Response($json, 400);
+        $response->headers->set('Content-Type', 'application/json');
+        return $response;
     }
+
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -230,6 +344,7 @@ if ($client->isAccessTokenExpired()) {
 
             // Redirige al usuario a la URL de autenticación
             header('Location: ' . $auth_url);
+            
 
             // Captura la URL de devolución
             if (isset($_GET['code'])) {
