@@ -12,10 +12,6 @@ use Google\Service\Gmail;
 use Google_Client;
 use Symfony\Component\HttpFoundation\Request;
 
-//use Google\Auth\Credentials\
-
-
-
 
 use Google_Service;  //x
 
@@ -226,11 +222,12 @@ class enviarController extends AbstractController
                 }
                 $response = [
                     'mensaje' => 'Autenticado correctamente',
+                    'A-T' => $access_token,
                 ];
 
                 $json = json_encode($response);
 
-                $response = new Response($json, 400);
+                $response = new Response($json, 200);
                 $response->headers->set('Content-Type', 'application/json');
                 // header('Location: ' . $redirect_uri);
                 return $response;
@@ -259,11 +256,12 @@ class enviarController extends AbstractController
 
         $response = [
             'mensaje' => 'Autenticado correctamente',
+            'A-T' => $access_token,
         ];
 
         $json = json_encode($response);
 
-        $response = new Response($json, 400);
+        $response = new Response($json, 200);
         $response->headers->set('Content-Type', 'application/json');
         return $response;
     }
@@ -517,4 +515,69 @@ class enviarController extends AbstractController
         $response = new Response('caso2 - Conectado a la api de gmail final ');
         return $response;
     }
-}
+
+
+
+
+
+      /**
+     * @Route("/autenticar2", name="autenticar2")
+     */
+    public function autenticar2()
+    {
+        $token = (__DIR__ . '/token.json');
+        
+        $client_id='653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com';
+        $client_secret='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';
+        $refresh_token = '1//04SkchBUkQhXsCgYIARAAGAQSNwF-L9IrFYifcvqc5Y_kakop8CD8ZDrYGXm6OyFSWxIR6sg8n7a4LcQm837jfXc2x2NH0xl4jLc';
+        $redirect_uri = 'https://127.0.0.1:8001/autenticar';
+
+        $client = new Google_Client();
+        $client->setClientId($client_id);
+        $client->setClientSecret($client_secret);
+        $client->setRedirectUri($redirect_uri);
+        $client->addScope([Gmail::MAIL_GOOGLE_COM]); //
+       
+        $client->setAccessType('offline'); //
+      
+
+        if (file_exists($token)) {
+            $access_token = json_decode(file_get_contents($token), true);
+        } else {
+            $access_token = $client->fetchAccessTokenWithRefreshToken($refresh_token);
+            if (!file_exists(dirname($token))) {
+                mkdir(dirname($token), 0700, true);
+            }
+            file_put_contents($token, json_encode($access_token));
+        }
+
+        $client->setAccessToken($access_token);
+                if ($client->isAccessTokenExpired()) {
+                    $client->fetchAccessTokenWithRefreshToken($refresh_token);
+                    $access_token = $client->getAccessToken();
+                    file_put_contents($token, json_encode($access_token));
+                }
+
+
+          
+
+           
+                $client->setAccessToken($access_token);
+               
+                $response = [
+                    'mensaje' => 'Autenticado correctamente',
+                    'A-T' => $access_token,
+                ];
+
+                $json = json_encode($response);
+
+                $response = new Response($json, 200);
+                $response->headers->set('Content-Type', 'application/json');
+               
+                return $response;
+        }
+
+       
+    }
+
+
