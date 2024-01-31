@@ -12,6 +12,8 @@ use Google\Service\Gmail;
 use Google_Client;
 use Symfony\Component\HttpFoundation\Request;
 
+use Google\Client as GC;
+
 
 use Google_Service;  //x
 
@@ -74,6 +76,8 @@ class enviarController extends AbstractController
                 'Mensaje enviado' => 'Ok',
                 'headers' => $headers,
                 'mensaje' => $body,
+                'to' => $to,
+                'raw' => $message,
             ];
 
             $json = json_encode($response);
@@ -387,7 +391,7 @@ class enviarController extends AbstractController
                 $headers .= "Subject: Asunto del correo electrónico php\r\n";
 
                 // Definir el cuerpo del correo electrónico
-                $body = 'Este es el cuerpo del correo electrónico [Gmail::GMAIL_SEND, Gmail::GMAIL_READONLY, Gmail::MAIL_GOOGLE_COM]';
+                $body = 'Este es el cuerpo del correo electrónico ';
 
                 // Combinar los encabezados y el cuerpo del correo electrónico
                 $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
@@ -576,6 +580,47 @@ class enviarController extends AbstractController
                
                 return $response;
         }
+
+
+
+
+    /**
+     * @Route("/rawbase64", name="rawbase64", methods={"POST"})
+     */
+    public function rawbase64(Request $request)
+    {
+        $dataReq = json_decode($request->getContent(), true);
+
+        $to = isset($dataReq['to']) ? $dataReq['to'] : 'manuelebarrera@gmail.com';
+        $subject = isset($dataReq['subject']) ? $dataReq['subject'] : 'Asunto predeterminado';
+        $body = isset($dataReq['body']) ? $dataReq['body'] : 'Este es el cuerpo del correo electrónico ';
+        $from = isset($dataReq['from']) ? $dataReq['from'] : 'pruebamanuelebarrera@gmail.com';
+
+       
+            $headers = "From: " . $from . "\r\n";
+            $headers .= "To: " . $to . "\r\n";
+            $headers .= "Subject: " . $subject . "\r\n";
+            $rm = $headers . "\r\n\r\n" . $body; 
+            $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
+           
+            $response = [
+                'from' => $from,
+                'to' => $to,
+                'subject' => $subject,
+                'body' => $body,
+                'rm' => $rm,
+                'raw' => $rawMessage,
+            ];
+
+            $json = json_encode($response);
+
+            $response = new Response($json, 200);
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
+       
+    }
+
+
 
        
     }
