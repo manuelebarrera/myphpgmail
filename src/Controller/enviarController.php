@@ -595,13 +595,33 @@ class enviarController extends AbstractController
         $subject = isset($dataReq['subject']) ? $dataReq['subject'] : 'Asunto predeterminado';
         $body = isset($dataReq['body']) ? $dataReq['body'] : 'Este es el cuerpo del correo electrónico ';
         $from = isset($dataReq['from']) ? $dataReq['from'] : 'pruebamanuelebarrera@gmail.com';
+        $file = isset($dataReq['file']) ? 'true' : 'false';
 
        
             $headers = "From: " . $from . "\r\n";
             $headers .= "To: " . $to . "\r\n";
             $headers .= "Subject: " . $subject . "\r\n";
-            $rm = $headers . "\r\n\r\n" . $body; 
-            $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
+            if ($file == 'true') {
+                $filePath = (__DIR__ . '/manual.pdf');
+                $fileData = file_get_contents($filePath);
+                $encoded_data = base64_encode($fileData);
+                $fileName = basename($filePath);
+                $fileType = mime_content_type($filePath);
+                
+                $headers .= "Content-Type: {$fileType}; name={$fileName}\r\n";
+                $headers .= "Content-Transfer-Encoding: base64\r\n";
+                $headers .= "Content-Disposition: attachment; filename=manual.pdf\r\n";
+
+                $rm = $headers . "\r\n\r\n" . $body . "\r\n\r\n" . $fileName; 
+                $rawMessage = base64_encode($headers . "\r\n\r\n" . $body . $encoded_data);     //base64_encode
+
+            }else{
+
+                $rm = $headers . "\r\n\r\n" . $body; 
+                $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
+
+            }
+
            
             $response = [
                 'from' => $from,
