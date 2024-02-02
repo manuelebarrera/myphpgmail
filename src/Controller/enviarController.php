@@ -12,6 +12,9 @@ use Google\Service\Gmail;
 use Google_Client;
 use Symfony\Component\HttpFoundation\Request;
 
+use Google\Service\Gmail\Resource\UsersMessagesAttachments;  //probar
+
+
 use Google\Client as GC;
 
 
@@ -25,7 +28,7 @@ class enviarController extends AbstractController
 
 
     /**
-     * @Route("/send", name="send")
+     * @Route("/send", name="send", methods={"POST"})
      */
     public function sendEmail(Request $request)
     {
@@ -33,6 +36,29 @@ class enviarController extends AbstractController
         if (!$to) {
             $to = 'manuelebarrera@gmail.com';
         }
+
+        $file = $request->files->get('file');
+        if ($file->getSize() === 0) {
+            return $this->json([
+                'error' => 'No se ha recibido ningún archivo.'
+            ], 400);
+        }
+
+        $allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+        if (!in_array($file->getMimeType(), $allowedMimeTypes)) {
+            return $this->json([
+                'error' => 'El tipo de archivo no es válido.'
+            ], 400);
+        }
+
+        if ($file->getSize() > 10000000) { // 10MB
+            return $this->json([
+                'error' => 'El archivo es demasiado grande.'
+            ], 400);
+        }
+
+        $fileData = file_get_contents($file->getPathname());
+        $encoded_data = base64_encode($fileData);
 
         $token = (__DIR__ . '/token.json');
         $credentials = (__DIR__ . '/credentials.json');
@@ -56,6 +82,7 @@ class enviarController extends AbstractController
             $service = new Gmail($client);
             // Crear un mensaje
             $message = new Gmail\Message();
+            
 
             // Definir los encabezados del correo electrónico
             $headers = "From: pruebamanuelebarrera@gmail.com\r\n";
@@ -65,10 +92,24 @@ class enviarController extends AbstractController
             // Definir el cuerpo del correo electrónico
             $body = 'Este es el cuerpo del correo electrónico ';
 
-            // Combinar los encabezados y el cuerpo del correo electrónico
-            $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
-            $message->setRaw($rawMessage);
+          //  if ($file == 'true') {
+                $filePath = $file->getPathName();
+                $fileName = $file->getClientOriginalName(); //basename($filePath);
+                $fileType = mime_content_type($filePath);
+                
+                $headers .= "Content-Type: {$fileType}; name={$fileName}\r\n";
+                $headers .= "Content-Transfer-Encoding: base64\r\n";
+                $headers .= "Content-Disposition: attachment; filename={$fileName}\r\n";
 
+                $rm = $headers . "\r\n\r\n" . $body . "\r\n\r\n" . $fileName; 
+                $rawMessage = base64_encode($headers . "\r\n\r\n" . $body . $fileData);     //$encoded_data
+
+          //  }else{
+            // Combinar los encabezados y el cuerpo del correo electrónico
+          //  $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
+            $message->setRaw($rawMessage);
+            
+           // }
             // Enviar el correo electrónico
             $msg = $service->users_messages->send('me', $message);
 
@@ -78,11 +119,12 @@ class enviarController extends AbstractController
                 'mensaje' => $body,
                 'to' => $to,
                 'raw' => $message,
+                'file' => $fileName,
             ];
 
             $json = json_encode($response);
 
-            $response = new Response($json, 400);
+            $response = new Response($json, 200);
             $response->headers->set('Content-Type', 'application/json');
             return $response;
         } else {
@@ -514,14 +556,9 @@ class enviarController extends AbstractController
 
 
 
-
-
         $response = new Response('caso2 - Conectado a la api de gmail final ');
         return $response;
     }
-
-
-
 
 
       /**
@@ -534,6 +571,7 @@ class enviarController extends AbstractController
         $client_id='653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com';
         $client_secret='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';
         $refresh_token = '1//04SkchBUkQhXsCgYIARAAGAQSNwF-L9IrFYifcvqc5Y_kakop8CD8ZDrYGXm6OyFSWxIR6sg8n7a4LcQm837jfXc2x2NH0xl4jLc';
+        
         $redirect_uri = 'https://127.0.0.1:8001/autenticar';
 
         $client = new Google_Client();
@@ -561,10 +599,6 @@ class enviarController extends AbstractController
                     $access_token = $client->getAccessToken();
                     file_put_contents($token, json_encode($access_token));
                 }
-
-
-          
-
            
                 $client->setAccessToken($access_token);
                
