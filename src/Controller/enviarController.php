@@ -32,13 +32,13 @@ class enviarController extends AbstractController
      */
     public function sendEmail(Request $request)
     {
-        $to = $request->query->get('to');
+        $to = $request->request->get('to');
         if (!$to) {
             $to = 'manuelebarrera@gmail.com';
         }
 
         $file = $request->files->get('file');
-        if ($file->getSize() === 0) {
+        if (!$file || $file->getSize() === 0) {
             return $this->json([
                 'error' => 'No se ha recibido ningún archivo.'
             ], 400);
@@ -83,34 +83,49 @@ class enviarController extends AbstractController
             // Crear un mensaje
             $message = new Gmail\Message();
             
-
-            // Definir los encabezados del correo electrónico
             $headers = "From: pruebamanuelebarrera@gmail.com\r\n";
             $headers .= "To: " . $to . "\r\n";
             $headers .= "Subject: Asunto del correo electrónico php\r\n";
 
-            // Definir el cuerpo del correo electrónico
+            $headers .= "MIME-Version: 1.0\r\n";
+            $headers .= "Content-Type: multipart/mixed; boundary=\"=A_GMAIL_BOUNDARY\"\r\n\r\n";
+
+            $body = "--=A_GMAIL_BOUNDARY\r\n";
+            $body .= "Content-Type: text/plain; charset=\"UTF-8\"\r\n";
+            $body .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
+
             $body = 'Este es el cuerpo del correo electrónico ';
 
-          //  if ($file == 'true') {
-                $filePath = $file->getPathName();
-                $fileName = $file->getClientOriginalName(); //basename($filePath);
-                $fileType = mime_content_type($filePath);
+            $body .= "\r\n\r\n";
+
+            $filePath = $file->getPathName();
+            $fileName = $file->getClientOriginalName(); 
+            $fileType = mime_content_type($filePath);
+
+
+            // Agregar el archivo adjunto
+$body .= "--=A_GMAIL_BOUNDARY\r\n";
+$body .= "Content-Type: {$fileType}; name=\"{$fileName}\"\r\n";
+$body .= "Content-Transfer-Encoding: base64\r\n";
+$body .= "Content-Disposition: attachment; filename=\"{$fileName}\"\r\n\r\n";
+$body .= chunk_split(base64_encode($fileData)) . "\r\n";
+$body .= "--=A_GMAIL_BOUNDARY--";
+
+$rawMessage = base64_encode($headers . $body);
+
+          
                 
-                $headers .= "Content-Type: {$fileType}; name={$fileName}\r\n";
+               /*  $headers .= "Content-Type: {$fileType}; name={$fileName}\r\n";
                 $headers .= "Content-Transfer-Encoding: base64\r\n";
                 $headers .= "Content-Disposition: attachment; filename={$fileName}\r\n";
-
+ */
                 $rm = $headers . "\r\n\r\n" . $body . "\r\n\r\n" . $fileName; 
-                $rawMessage = base64_encode($headers . "\r\n\r\n" . $body . $fileData);     //$encoded_data
+               // $rawMessage = base64_encode($headers . "\r\n\r\n" . $body . "\r\n\r\n" . $fileData);     //$encoded_data
 
-          //  }else{
-            // Combinar los encabezados y el cuerpo del correo electrónico
-          //  $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
+         
             $message->setRaw($rawMessage);
             
-           // }
-            // Enviar el correo electrónico
+          
             $msg = $service->users_messages->send('me', $message);
 
             $response = [
