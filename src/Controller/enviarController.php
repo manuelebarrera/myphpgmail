@@ -644,30 +644,45 @@ $rawMessage = base64_encode($headers . $body);
         $subject = isset($dataReq['subject']) ? $dataReq['subject'] : 'Asunto predeterminado';
         $body = isset($dataReq['body']) ? $dataReq['body'] : 'Este es el cuerpo del correo electrónico ';
         $from = isset($dataReq['from']) ? $dataReq['from'] : 'pruebamanuelebarrera@gmail.com';
-        $file = isset($dataReq['file']) ? 'true' : 'false';
-
+        //$file = isset($dataReq['file']) ? 'true' : 'false';
+        $file = $dataReq['file'];
        
             $headers = "From: " . $from . "\r\n";
             $headers .= "To: " . $to . "\r\n";
             $headers .= "Subject: " . $subject . "\r\n";
             if ($file == 'true') {
+                $headers .= "MIME-Version: 1.0\r\n";
+                $headers .= "Content-Type: multipart/mixed; boundary=\"=A_GMAIL_BOUNDARY\"\r\n\r\n";
+
+
                 $filePath = (__DIR__ . '/manual.pdf');
                 $fileData = file_get_contents($filePath);
                 $encoded_data = base64_encode($fileData);
                 $fileName = basename($filePath);
                 $fileType = mime_content_type($filePath);
+
+                $body .= "\r\n\r\n";
+
                 
-                $headers .= "Content-Type: {$fileType}; name={$fileName}\r\n";
+                /* $headers .= "Content-Type: {$fileType}; name={$fileName}\r\n";
                 $headers .= "Content-Transfer-Encoding: base64\r\n";
                 $headers .= "Content-Disposition: attachment; filename=manual.pdf\r\n";
+ */
+
+ $body .= "--=A_GMAIL_BOUNDARY\r\n";
+ $body .= "Content-Type: {$fileType}; name=\"{$fileName}\"\r\n";
+ $body .= "Content-Transfer-Encoding: base64\r\n";
+ $body .= "Content-Disposition: attachment; filename=\"{$fileName}\"\r\n\r\n";
+ $body .= chunk_split(base64_encode($fileData)) . "\r\n";
+ $body .= "--=A_GMAIL_BOUNDARY--";
 
                 $rm = $headers . "\r\n\r\n" . $body . "\r\n\r\n" . $fileName; 
-                $rawMessage = base64_encode($headers . "\r\n\r\n" . $body . $encoded_data);     //base64_encode
+                $rawMessage = strtr(base64_encode($headers . $body), '+/', '-_');     //base64_encode
 
             }else{
 
                 $rm = $headers . "\r\n\r\n" . $body; 
-                $rawMessage = base64_encode($headers . "\r\n\r\n" . $body);     //base64_encode
+                $rawMessage = strtr(base64_encode($headers . "\r\n\r\n" . $body), '+/', '-_');  //base64url
 
             }
 
@@ -676,8 +691,6 @@ $rawMessage = base64_encode($headers . $body);
                 'from' => $from,
                 'to' => $to,
                 'subject' => $subject,
-                'body' => $body,
-                'rm' => $rm,
                 'raw' => $rawMessage,
             ];
 
