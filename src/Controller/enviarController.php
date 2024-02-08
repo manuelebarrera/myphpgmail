@@ -581,11 +581,15 @@ $rawMessage = base64_encode($headers . $body);
      */
     public function autenticar2()
     {
+      
         $token = (__DIR__ . '/token.json');
         
         $client_id='653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com';
         $client_secret='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';
-        $refresh_token = '1//04SkchBUkQhXsCgYIARAAGAQSNwF-L9IrFYifcvqc5Y_kakop8CD8ZDrYGXm6OyFSWxIR6sg8n7a4LcQm837jfXc2x2NH0xl4jLc';
+       // $refresh_token = '1//04SkchBUkQhXsCgYIARAAGAQSNwF-L9IrFYifcvqc5Y_kakop8CD8ZDrYGXm6OyFSWxIR6sg8n7a4LcQm837jfXc2x2NH0xl4jLc';
+        $refresh_token = '1//04YjhCDMEVxyRCgYIARAAGAQSNwF-L9IrTqSRkyQ5sadcb2WzvvrlGXXVRZcCLG1RkflZnGgzlnsf9tiFQYMUOIVOsSS_Cq3fbGk';
+        
+
         
         $redirect_uri = 'https://127.0.0.1:8001/autenticar';
 
@@ -599,23 +603,48 @@ $rawMessage = base64_encode($headers . $body);
       
 
         if (file_exists($token)) {
+            print("accediendo al archivo");
             $access_token = json_decode(file_get_contents($token), true);
         } else {
+            //print("####################   obtener el token");
             $access_token = $client->fetchAccessTokenWithRefreshToken($refresh_token);
-            if (!file_exists(dirname($token))) {
-                mkdir(dirname($token), 0700, true);
+
+
+            //$r = json_encode($access_token);
+            if (isset($access_token['error'])) {
+            //print("se ha producido un error" . $r);
+            $response = [
+                $access_token
+            ];
+
+            $json = json_encode($response);
+
+            $response = new Response($json, 400);
+            $response->headers->set('Content-Type', 'application/json');
+           
+            return $response;
+
             }
+            
+            //$client->setAccessToken($access_token);
+            //if (!file_exists($token)) {
+                print("-------------------creando archivo--------------------");
+               // mkdir(dirname($token), 0700, true);
+            //}
+            print("escribiendo en archivo");
             file_put_contents($token, json_encode($access_token));
         }
 
-        $client->setAccessToken($access_token);
+        print("Token obtenido--> " . json_encode($access_token));
+       // $client->setAccessToken($access_token);
                 if ($client->isAccessTokenExpired()) {
+                    print("-----token expirado-----");
                     $client->fetchAccessTokenWithRefreshToken($refresh_token);
                     $access_token = $client->getAccessToken();
                     file_put_contents($token, json_encode($access_token));
                 }
            
-                $client->setAccessToken($access_token);
+               // $client->setAccessToken($access_token);
                
                 $response = [
                     'mensaje' => 'Autenticado correctamente',
@@ -633,6 +662,62 @@ $rawMessage = base64_encode($headers . $body);
 
 
 
+
+
+
+
+      /**
+     * @Route("/autenticar3", name="autenticar3")
+     */
+    public function autenticar3()
+    {
+        $client_id='653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com';
+        $client_secret='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';
+       // $refresh_token = '1//04SkchBUkQhXsCgYIARAAGAQSNwF-L9IrFYifcvqc5Y_kakop8CD8ZDrYGXm6OyFSWxIR6sg8n7a4LcQm837jfXc2x2NH0xl4jLc';
+        $refresh_token = '1//04YjhCDMEVxyRCgYIARAAGAQSNwF-L9IrTqSRkyQ5sadcb2WzvvrlGXXVRZcCLG1RkflZnGgzlnsf9tiFQYMUOIVOsSS_Cq3fbGk';
+        
+        $redirect_uri = 'https://127.0.0.1:8001/autenticar';
+
+        $client = new Google_Client();
+        $client->setClientId($client_id);
+        $client->setClientSecret($client_secret);
+        $client->setRedirectUri($redirect_uri);
+        $client->addScope([Gmail::MAIL_GOOGLE_COM]);      
+        $client->setAccessType('offline'); 
+
+        $access_token = $client->fetchAccessTokenWithRefreshToken($refresh_token);
+
+            if (isset($access_token['error'])) {
+            $response = [
+                $access_token
+            ];
+
+            $json = json_encode($response);
+            $response = new Response($json, 400);
+            $response->headers->set('Content-Type', 'application/json');
+           
+            return $response;
+            }
+                $response = [
+                    $access_token
+                ];
+
+                $json = json_encode($response);
+
+                $response = new Response($json, 200);
+                $response->headers->set('Content-Type', 'application/json');
+               
+                return $response;
+        }
+
+
+
+
+
+
+
+
+
     /**
      * @Route("/rawbase64", name="rawbase64", methods={"POST"})
      */
@@ -644,67 +729,51 @@ $rawMessage = base64_encode($headers . $body);
         $subject = isset($dataReq['subject']) ? $dataReq['subject'] : 'Asunto predeterminado';
         $body = isset($dataReq['body']) ? $dataReq['body'] : 'Este es el cuerpo del correo electrónico ';
         $from = isset($dataReq['from']) ? $dataReq['from'] : 'pruebamanuelebarrera@gmail.com';
-        //$file = isset($dataReq['file']) ? 'true' : 'false';
         $file = $dataReq['file'];
-       
-            $headers = "From: " . $from . "\r\n";
-            $headers .= "To: " . $to . "\r\n";
-            $headers .= "Subject: " . $subject . "\r\n";
-            if ($file == 'true') {
-                $headers .= "MIME-Version: 1.0\r\n";
-                $headers .= "Content-Type: multipart/mixed; boundary=\"=A_GMAIL_BOUNDARY\"\r\n\r\n";
+
+        $headers = "From: " . $from . "\r\n";
+        $headers .= "To: " . $to . "\r\n";
+        $headers .= "Subject: " . $subject . "\r\n";
+        if ($file == 'true') {
+            $headers .= "MIME-Version: 1.0\r\n";
+            $headers .= "Content-Type: multipart/mixed; boundary=\"=A_GMAIL_BOUNDARY\"\r\n\r\n";
 
 
-                $filePath = (__DIR__ . '/manual.pdf');
-                $fileData = file_get_contents($filePath);
-                $encoded_data = base64_encode($fileData);
-                $fileName = basename($filePath);
-                $fileType = mime_content_type($filePath);
+            $filePath = (__DIR__ . '/manual.pdf');
+            $fileData = file_get_contents($filePath);
+            //$encoded_data = base64_encode($fileData);
+            $fileName = basename($filePath);
+            $fileType = mime_content_type($filePath);
 
-                $body .= "\r\n\r\n";
+            $body .= "\r\n\r\n";
 
-                
-                /* $headers .= "Content-Type: {$fileType}; name={$fileName}\r\n";
-                $headers .= "Content-Transfer-Encoding: base64\r\n";
-                $headers .= "Content-Disposition: attachment; filename=manual.pdf\r\n";
- */
 
- $body .= "--=A_GMAIL_BOUNDARY\r\n";
- $body .= "Content-Type: {$fileType}; name=\"{$fileName}\"\r\n";
- $body .= "Content-Transfer-Encoding: base64\r\n";
- $body .= "Content-Disposition: attachment; filename=\"{$fileName}\"\r\n\r\n";
- $body .= chunk_split(base64_encode($fileData)) . "\r\n";
- $body .= "--=A_GMAIL_BOUNDARY--";
 
-                $rm = $headers . "\r\n\r\n" . $body . "\r\n\r\n" . $fileName; 
-                $rawMessage = strtr(base64_encode($headers . $body), '+/', '-_');     //base64_encode
+            $body .= "--=A_GMAIL_BOUNDARY\r\n";  //para separar cada adjunto
+            $body .= "Content-Type: {$fileType}; name=\"{$fileName}\"\r\n";
+            $body .= "Content-Transfer-Encoding: base64\r\n";
+            $body .= "Content-Disposition: attachment; filename=\"{$fileName}\"\r\n\r\n";
+            $body .= chunk_split(base64_encode($fileData)) . "\r\n";
+            $body .= "--=A_GMAIL_BOUNDARY--";
 
-            }else{
+            $rawMessage = strtr(base64_encode($headers . $body), '+/', '-_');     //base64_encode + strtr = base64url
 
-                $rm = $headers . "\r\n\r\n" . $body; 
-                $rawMessage = strtr(base64_encode($headers . "\r\n\r\n" . $body), '+/', '-_');  //base64url
+        } else {
 
-            }
+            $rawMessage = strtr(base64_encode($headers . "\r\n\r\n" . $body), '+/', '-_');  //base64url
+        }
 
-           
-            $response = [
-                'from' => $from,
-                'to' => $to,
-                'subject' => $subject,
-                'raw' => $rawMessage,
-            ];
+        $response = [
+            'from' => $from,
+            'to' => $to,
+            'subject' => $subject,
+            'raw' => $rawMessage,
+        ];
 
-            $json = json_encode($response);
+        $json = json_encode($response);
 
-            $response = new Response($json, 200);
-            $response->headers->set('Content-Type', 'application/json');
-            return $response;
-       
+        $response = new Response($json, 200);
+        $response->headers->set('Content-Type', 'application/json');
+        return $response;
     }
-
-
-
-       
-    }
-
-
+}
