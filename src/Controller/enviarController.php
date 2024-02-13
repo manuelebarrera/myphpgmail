@@ -587,7 +587,8 @@ $rawMessage = base64_encode($headers . $body);
         $client_id='653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com';
         $client_secret='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';
        // $refresh_token = '1//04SkchBUkQhXsCgYIARAAGAQSNwF-L9IrFYifcvqc5Y_kakop8CD8ZDrYGXm6OyFSWxIR6sg8n7a4LcQm837jfXc2x2NH0xl4jLc';
-        $refresh_token = '1//04YjhCDMEVxyRCgYIARAAGAQSNwF-L9IrTqSRkyQ5sadcb2WzvvrlGXXVRZcCLG1RkflZnGgzlnsf9tiFQYMUOIVOsSS_Cq3fbGk';
+        //$refresh_token = '1//04YjhCDMEVxyRCgYIARAAGAQSNwF-L9IrTqSRkyQ5sadcb2WzvvrlGXXVRZcCLG1RkflZnGgzlnsf9tiFQYMUOIVOsSS_Cq3fbGk';
+        $refresh_token = '1//04nlDlPyXb8X4CgYIARAAGAQSNwF-L9IrqItBH6BrZXUc1Uwx5Td2DKBbsdcJy8casq2fPGdLje3HHYDEjeFA-f8V1kmpLGFfZs0';
         
 
         
@@ -674,7 +675,8 @@ $rawMessage = base64_encode($headers . $body);
         $client_id='653487830785-9tei5cco9g1oivhjs4c26tv2kjlv8m51.apps.googleusercontent.com';
         $client_secret='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';
        // $refresh_token = '1//04SkchBUkQhXsCgYIARAAGAQSNwF-L9IrFYifcvqc5Y_kakop8CD8ZDrYGXm6OyFSWxIR6sg8n7a4LcQm837jfXc2x2NH0xl4jLc';
-        $refresh_token = '1//04YjhCDMEVxyRCgYIARAAGAQSNwF-L9IrTqSRkyQ5sadcb2WzvvrlGXXVRZcCLG1RkflZnGgzlnsf9tiFQYMUOIVOsSS_Cq3fbGk';
+       // $refresh_token = '1//04YjhCDMEVxyRCgYIARAAGAQSNwF-L9IrTqSRkyQ5sadcb2WzvvrlGXXVRZcCLG1RkflZnGgzlnsf9tiFQYMUOIVOsSS_Cq3fbGk';
+        $refresh_token = '1//04nlDlPyXb8X4CgYIARAAGAQSNwF-L9IrqItBH6BrZXUc1Uwx5Td2DKBbsdcJy8casq2fPGdLje3HHYDEjeFA-f8V1kmpLGFfZs0';
         
         $redirect_uri = 'https://127.0.0.1:8001/autenticar';
 
@@ -682,7 +684,7 @@ $rawMessage = base64_encode($headers . $body);
         $client->setClientId($client_id);
         $client->setClientSecret($client_secret);
         $client->setRedirectUri($redirect_uri);
-        $client->addScope([Gmail::MAIL_GOOGLE_COM]);      
+        $client->addScope([Gmail::MAIL_GOOGLE_COM, Gmail::GMAIL_READONLY]);      
         $client->setAccessType('offline'); 
 
         $access_token = $client->fetchAccessTokenWithRefreshToken($refresh_token);
@@ -776,4 +778,38 @@ $rawMessage = base64_encode($headers . $body);
         $response->headers->set('Content-Type', 'application/json');
         return $response;
     }
+
+      /**
+     * @Route("/adjunto", name="adjunto", methods={"POST"})
+     */
+    public function adjunto(Request $request)
+    {
+        $dataReq = json_decode($request->getContent(), true);
+
+        $data = isset($dataReq['data']) ? $dataReq['data'] : 'sindata';
+        if ($data == 'sindata') {
+            $response = [
+                'error' => "sin data",
+            ];
+    
+            $json = json_encode($response);
+    
+            $response = new Response($json, 200);
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
+            
+        } else {
+
+            $data = str_pad(strtr($data, '-_', '+/'), strlen($data) % 4, '=', STR_PAD_RIGHT);
+            $fileContent = base64_decode($data);
+            
+            $response = new Response($fileContent);
+            $response->headers->set('Content-Type', 'application/octet-stream');
+            $response->headers->set('Content-Disposition', 'attachment; filename="file"');
+
+          
+
+        return $response;
+    }
+}
 }
